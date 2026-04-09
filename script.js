@@ -101,9 +101,6 @@ function animate(currentTime) {
     }
 
     clampVelocityMagnitude(player.velocity, MAX_SPEED)
-
-    console.log(currentTime)
-
 }
 
 animate(0)
@@ -149,11 +146,13 @@ addEventListener('click', (event) => {
         event.clientY - canvas.height / 2,
         event.clientX - canvas.width / 2
     )
+
+    console.log(`angle: ${angle * (180 / Math.PI)} degrees`)
     const velocity = {
         x: Math.cos(angle) * 5,
         y: Math.sin(angle) * 5
     }
-    projectiles.push(
-        new Projectile(canvas.width / 2, canvas.height / 2, 5, 'white', velocity)
-    )
+    // projectiles.push(
+    //     new Projectile(canvas.width / 2, canvas.height / 2, 5, 'white', velocity)
+    // )
 })
