@@ -54,6 +54,24 @@ class Player {
     }
 }
 
+class Projectile {
+    constructor(
+        position,
+        velocity,
+        damage,
+        radius
+    ) {
+        this.position = position
+        this.velocity = velocity
+        this.damage = damage
+        this.radius = radius
+    }
+
+    draw() {
+        
+    }
+}
+
 const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0, y: 0 })
 
 function clampVelocityMagnitude(velocity, maxSpeed) {
@@ -77,6 +95,8 @@ function applyFriction(velocity, frictionAmount) {
 
 let lastTime = 0
 
+alert("test 2")
+
 function animate(currentTime) {
     const deltaTime = currentTime - lastTime
     lastTime = currentTime
@@ -84,8 +104,8 @@ function animate(currentTime) {
     requestAnimationFrame(animate)
     c.fillStyle = bgcolor
     c.fillRect(0, 0, canvas.width, canvas.height)
-    player.update(deltaTime)
 
+    clampVelocityMagnitude(player.velocity, MAX_SPEED)
     applyFriction(player.velocity, 0.25)
 
     if (keys.d.pressed) {
@@ -115,9 +135,9 @@ function animate(currentTime) {
     if (player.position.y > canvas.height - player.height) {
         player.position.y = canvas.height - player.height;
         player.velocity.y = 0;
-    }    
-    
-    clampVelocityMagnitude(player.velocity, MAX_SPEED)
+    }
+
+    player.update(deltaTime)
 }
 
 animate(0)
