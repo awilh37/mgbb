@@ -21,7 +21,9 @@ const keys = {
     }
 }
 
-const MAX_SPEED = 3
+const MAX_SPEED = 20
+const ACCELERATION = 2
+const FRICTION = 0.25
 
 class Player {
     constructor(
@@ -50,7 +52,6 @@ class Player {
     update(dt) {
         this.position.x += this.velocity.x * dt
         this.position.y += this.velocity.y * dt
-        this.draw()
     }
 }
 
@@ -68,11 +69,21 @@ class Projectile {
     }
 
     draw() {
-        
+        c.fillStyle = "black"
+        c.beginPath()
+        c.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2)
+        c.fill()
+    }
+
+    update(dt) {
+        this.position.x += this.velocity.x * dt
+        this.position.y += this.velocity.y * dt
     }
 }
 
 const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0, y: 0 })
+
+const projectiles = []
 
 function clampVelocityMagnitude(velocity, maxSpeed) {
     const magnitude = Math.sqrt(velocity.x ** 2 + velocity.y ** 2)
@@ -95,49 +106,68 @@ function applyFriction(velocity, frictionAmount) {
 
 let lastTime = 0
 
-alert("test 2")
-
 function animate(currentTime) {
-    const deltaTime = currentTime - lastTime
+    const deltaTime = Math.min(currentTime - lastTime, 100) / 16.6667
     lastTime = currentTime
 
     requestAnimationFrame(animate)
     c.fillStyle = bgcolor
     c.fillRect(0, 0, canvas.width, canvas.height)
 
+    const axisX = keys.d.pressed ? 1 : keys.a.pressed ? -1 : 0
+    const axisY = keys.s.pressed ? 1 : keys.w.pressed ? -1 : 0
+    const dirMag = Math.hypot(axisX, axisY)
+
+    if (dirMag > 0) {
+        player.velocity.x += (ACCELERATION * deltaTime) * axisX / dirMag
+        player.velocity.y += (ACCELERATION * deltaTime) * axisY / dirMag
+    }
+
     clampVelocityMagnitude(player.velocity, MAX_SPEED)
-    applyFriction(player.velocity, 0.25)
-
-    if (keys.d.pressed) {
-        player.velocity.x += 0.5
-    } else if (keys.a.pressed) {
-        player.velocity.x += -0.5
-    }
-
-    if (keys.s.pressed) {
-        player.velocity.y += 0.5
-    } else if (keys.w.pressed) {
-        player.velocity.y += -0.5
-    }
-    
-    if (player.position.x < 0) {
-        player.position.x = 0;
-        player.velocity.x = 0;
-    }
-    if (player.position.x > canvas.width - player.width) {
-        player.position.x = canvas.width - player.width;
-        player.velocity.x = 0;
-    }
-    if (player.position.y < 0) {
-        player.position.y = 0;
-        player.velocity.y = 0;
-    }
-    if (player.position.y > canvas.height - player.height) {
-        player.position.y = canvas.height - player.height;
-        player.velocity.y = 0;
-    }
+    applyFriction(player.velocity, FRICTION * deltaTime)
 
     player.update(deltaTime)
+
+    if (player.position.x < 0) {
+        player.position.x = 0
+        player.velocity.x *= -1
+    }
+    if (player.position.x > canvas.width - player.width) {
+        player.position.x = canvas.width - player.width
+        player.velocity.x *= -1
+    }
+    if (player.position.y < 0) {
+        player.position.y = 0
+        player.velocity.y *= -1
+    }
+    if (player.position.y > canvas.height - player.height) {
+        player.position.y = canvas.height - player.height
+        player.velocity.y *= -1
+    }
+
+    player.draw()
+
+    // test to make sure the projectile speed is normalized if they are fired at an angle relative to an axis
+    // CURRENTLY NOT NORMALIZED, PLEASE FIX
+    // projectiles.push(projectile = new Projectile(
+    //     { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
+    //     { x: 10, y: 0 },
+    //     10,
+    //     5
+    // ))
+    // projectiles.push(projectile = new Projectile(
+    //     { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
+    //     { x: 10, y: 10 },
+    //     10,
+    //     5
+    // ))
+
+
+    for (let i = 0; i < projectiles.length; i++) {
+        const projectile = projectiles[i]
+        projectile.update(deltaTime)
+        projectile.draw()
+    }
 }
 
 animate(0)
@@ -180,16 +210,25 @@ window.addEventListener('keyup', (event) => {
 addEventListener('click', (event) => {
     console.log(`click`)
     const angle = Math.atan2(
-        event.clientY - canvas.height / 2,
-        event.clientX - canvas.width / 2
+        event.clientY - player.position.y + (player.height / 2),
+        event.clientX - player.position.x + (player.width / 2)
+    )
+
+    const distance = Math.sqrt(
+        Math.hypot(event.clientX - player.position.x, event.clientY - player.position.y)
     )
 
     console.log(`angle: ${angle * (180 / Math.PI)} degrees`)
     const velocity = {
-        x: Math.cos(angle) * 5,
-        y: Math.sin(angle) * 5
+        x: (Math.cos(angle) * (4 * Math.log(distance + 1) + 2)) + player.velocity.x,
+        y: (Math.sin(angle) * (4 * Math.log(distance + 1) + 2)) + player.velocity.y
     }
-    // projectiles.push(
-    //     new Projectile(canvas.width / 2, canvas.height / 2, 5, 'white', velocity)
-    // )
+
+    console.log(`velocity: (${velocity.x}, ${velocity.y})`)
+    projectiles.push(projectile = new Projectile(
+        { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
+        velocity,
+        10,
+        5
+    ))
 })
