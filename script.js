@@ -99,7 +99,24 @@ function animate(currentTime) {
     } else if (keys.w.pressed) {
         player.velocity.y += -0.5
     }
-
+    
+    if (player.position.x < 0) {
+        player.position.x = 0;
+        player.velocity.x = 0;
+    }
+    if (player.position.x > canvas.width - player.width) {
+        player.position.x = canvas.width - player.width;
+        player.velocity.x = 0;
+    }
+    if (player.position.y < 0) {
+        player.position.y = 0;
+        player.velocity.y = 0;
+    }
+    if (player.position.y > canvas.height - player.height) {
+        player.position.y = canvas.height - player.height;
+        player.velocity.y = 0;
+    }    
+    
     clampVelocityMagnitude(player.velocity, MAX_SPEED)
 }
 
