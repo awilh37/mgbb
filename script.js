@@ -24,6 +24,7 @@ const keys = {
 const MAX_SPEED = 20
 const ACCELERATION = 2
 const FRICTION = 0.25
+const SPAWN_RATE = 5000
 
 class Player {
     constructor(
@@ -60,7 +61,7 @@ class Enemy {
         position,
         velocity,
         health = 100,
-        color = "red",
+        color = rgb(255, 0, 0),
         width = 50,
         height = 50,
         speed = 10
@@ -124,9 +125,6 @@ const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0,
 const projectiles = []
 const enemies = []
 
-const enemy = new Enemy({ x: 100, y: 100 }, { x: 0, y: 0 })
-enemies.push(enemy)
-
 function clampVelocityMagnitude(velocity, maxSpeed) {
     const magnitude = Math.sqrt(velocity.x ** 2 + velocity.y ** 2)
     if (magnitude > maxSpeed) {
@@ -146,7 +144,28 @@ function applyFriction(velocity, frictionAmount) {
     }
 }
 
+function isColliding(rect, circle) {
+    const closestX = Math.max(rect.position.x, Math.min(circle.position.x, rect.position.x + rect.width))
+    const closestY = Math.max(rect.position.y, Math.min(circle.position.y, rect.position.y + rect.height))
+
+    const distanceX = circle.position.x - closestX
+    const distanceY = circle.position.y - closestY
+
+    return (distanceX ** 2 + distanceY ** 2) < (circle.radius ** 2)
+}
+
+function isRectColliding(rect1, rect2) {
+    return (
+        rect1.position.x < rect2.position.x + rect2.width &&
+        rect1.position.x + rect1.width > rect2.position.x &&
+        rect1.position.y < rect2.position.y + rect2.height &&
+        rect1.position.y + rect1.height > rect2.position.y
+    )
+}
+
+
 let lastTime = 0
+let lastSpawnTime = 0
 
 function animate(currentTime) {
     const deltaTime = Math.min(currentTime - lastTime, 100) / 16.6667
@@ -189,16 +208,50 @@ function animate(currentTime) {
 
     player.draw()
 
-    for (let i = 0; i < projectiles.length; i++) {
-        const projectile = projectiles[i]
-        projectile.update(deltaTime)
-        projectile.draw()
+    const now = currentTime
+    if (now - lastSpawnTime > SPAWN_RATE) {
+        enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 50))
+        lastSpawnTime = now
     }
 
-    for (let i = 0; i < enemies.length; i++) {
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i]
-        enemy.update(deltaTime)
-        enemy.draw()
+        for (let j = projectiles.length - 1; j >= 0; j--) {
+            const projectile = projectiles[j]
+            if (isColliding(enemy, projectile)) {
+                enemy.health -= projectile.damage
+                projectiles.splice(j, 1)
+                break
+            }
+        }
+
+        if (enemy.health > 0) {
+            enemy.update(deltaTime)
+            if (isRectColliding(enemy, player)) {
+                player.health -= enemy.health
+                enemies.splice(i, 1)
+                continue
+            }
+            enemy.draw()
+        } else {
+            enemies.splice(i, 1)
+        }
+    }
+
+    for (let j = projectiles.length - 1; j >= 0; j--) {
+        const projectile = projectiles[j]
+        projectile.update(deltaTime)
+        projectile.draw()
+
+        if (
+            projectile.position.x < 0 ||
+            projectile.position.x > canvas.width ||
+            projectile.position.y < 0 ||
+            projectile.position.y > canvas.height
+        ) {
+            projectiles.splice(j, 1)
+        }
     }
 }
 
@@ -254,14 +307,12 @@ addEventListener('click', (event) => {
         event.clientY - playerCenterY
     )
 
-    console.log(`angle: ${angle * (180 / Math.PI)} degrees`)
     const projectileSpeed = 4 * Math.log(distance + 1) + 2
     const velocity = {
         x: Math.cos(angle) * projectileSpeed + player.velocity.x,
         y: Math.sin(angle) * projectileSpeed + player.velocity.y
     }
 
-    console.log(`velocity: (${velocity.x}, ${velocity.y})`)
     projectiles.push(new Projectile(
         { x: playerCenterX, y: playerCenterY },
         velocity,
