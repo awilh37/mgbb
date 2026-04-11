@@ -55,6 +55,44 @@ class Player {
     }
 }
 
+class Enemy {
+    constructor(
+        position,
+        velocity,
+        health = 100,
+        color = "red",
+        width = 50,
+        height = 50,
+        speed = 10
+    ) {
+        this.position = position
+        this.velocity = velocity
+        this.health = health
+        this.color = color
+        this.width = width
+        this.height = height
+        this.speed = speed
+    }
+
+    draw() {
+        c.fillStyle = this.color
+        c.fillRect(this.position.x, this.position.y, this.width, this.height)
+    }
+
+    update(dt) {
+        const dirX = player.position.x - this.position.x
+        const dirY = player.position.y - this.position.y
+        const distance = Math.hypot(dirX, dirY)
+        if (distance > 0) {
+            this.velocity.x = (dirX / distance) * this.speed
+            this.velocity.y = (dirY / distance) * this.speed
+        }
+        this.position.x += this.velocity.x * dt
+        this.position.y += this.velocity.y * dt
+    }
+
+}
+
 class Projectile {
     constructor(
         position,
@@ -84,6 +122,10 @@ class Projectile {
 const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0, y: 0 })
 
 const projectiles = []
+const enemies = []
+
+const enemy = new Enemy({ x: 100, y: 100 }, { x: 0, y: 0 })
+enemies.push(enemy)
 
 function clampVelocityMagnitude(velocity, maxSpeed) {
     const magnitude = Math.sqrt(velocity.x ** 2 + velocity.y ** 2)
@@ -147,26 +189,16 @@ function animate(currentTime) {
 
     player.draw()
 
-    // test to make sure the projectile speed is normalized if they are fired at an angle relative to an axis
-    // CURRENTLY NOT NORMALIZED, PLEASE FIX
-    // projectiles.push(projectile = new Projectile(
-    //     { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
-    //     { x: 10, y: 0 },
-    //     10,
-    //     5
-    // ))
-    // projectiles.push(projectile = new Projectile(
-    //     { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
-    //     { x: 10, y: 10 },
-    //     10,
-    //     5
-    // ))
-
-
     for (let i = 0; i < projectiles.length; i++) {
         const projectile = projectiles[i]
         projectile.update(deltaTime)
         projectile.draw()
+    }
+
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i]
+        enemy.update(deltaTime)
+        enemy.draw()
     }
 }
 
@@ -209,24 +241,29 @@ window.addEventListener('keyup', (event) => {
 
 addEventListener('click', (event) => {
     console.log(`click`)
+    const playerCenterX = player.position.x + player.width / 2
+    const playerCenterY = player.position.y + player.height / 2
+
     const angle = Math.atan2(
-        event.clientY - player.position.y + (player.height / 2),
-        event.clientX - player.position.x + (player.width / 2)
+        event.clientY - playerCenterY,
+        event.clientX - playerCenterX
     )
 
-    const distance = Math.sqrt(
-        Math.hypot(event.clientX - player.position.x, event.clientY - player.position.y)
+    const distance = Math.hypot(
+        event.clientX - playerCenterX,
+        event.clientY - playerCenterY
     )
 
     console.log(`angle: ${angle * (180 / Math.PI)} degrees`)
+    const projectileSpeed = 4 * Math.log(distance + 1) + 2
     const velocity = {
-        x: (Math.cos(angle) * (4 * Math.log(distance + 1) + 2)) + player.velocity.x,
-        y: (Math.sin(angle) * (4 * Math.log(distance + 1) + 2)) + player.velocity.y
+        x: Math.cos(angle) * projectileSpeed + player.velocity.x,
+        y: Math.sin(angle) * projectileSpeed + player.velocity.y
     }
 
     console.log(`velocity: (${velocity.x}, ${velocity.y})`)
-    projectiles.push(projectile = new Projectile(
-        { x: player.position.x + (player.width / 2), y: player.position.y + (player.height / 2) },
+    projectiles.push(new Projectile(
+        { x: playerCenterX, y: playerCenterY },
         velocity,
         10,
         5
