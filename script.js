@@ -26,6 +26,8 @@ const ACCELERATION = 2
 const FRICTION = 0.25
 const SPAWN_RATE = 5000
 
+let gameOn = true
+
 class Player {
     constructor(
         position,
@@ -33,7 +35,8 @@ class Player {
         health = 100,
         color = "green",
         width = 50,
-        height = 50
+        height = 50,
+        damage = 10
     ) {
         this.position = position
         this.velocity = velocity
@@ -41,6 +44,7 @@ class Player {
         this.color = color
         this.width = width
         this.height = height
+        this.damage = damage
     }
 
     draw() {
@@ -61,7 +65,7 @@ class Enemy {
         position,
         velocity,
         health = 100,
-        color = rgb(255, 0, 0),
+        color = "rgb(255, 0, 0)",
         width = 50,
         height = 50,
         speed = 10
@@ -73,10 +77,12 @@ class Enemy {
         this.width = width
         this.height = height
         this.speed = speed
+        this.OGhealth = health
     }
 
     draw() {
-        c.fillStyle = this.color
+        const redValue = Math.max(0, Math.min(255, Math.floor(255 * (this.health / this.OGhealth))))
+        c.fillStyle = `rgb(${redValue}, 0, 0)`
         c.fillRect(this.position.x, this.position.y, this.width, this.height)
     }
 
@@ -175,82 +181,94 @@ function animate(currentTime) {
     c.fillStyle = bgcolor
     c.fillRect(0, 0, canvas.width, canvas.height)
 
-    const axisX = keys.d.pressed ? 1 : keys.a.pressed ? -1 : 0
-    const axisY = keys.s.pressed ? 1 : keys.w.pressed ? -1 : 0
-    const dirMag = Math.hypot(axisX, axisY)
-
-    if (dirMag > 0) {
-        player.velocity.x += (ACCELERATION * deltaTime) * axisX / dirMag
-        player.velocity.y += (ACCELERATION * deltaTime) * axisY / dirMag
+    if (player.health <= 0) {
+        c.fillStyle = "black"
+        c.font = "48px serif"
+        c.textAlign = "center"
+        c.fillText("Game Over", canvas.width / 2, canvas.height / 2)
+        enemies = []
+        projectiles = []
+        gameOn = false
     }
 
-    clampVelocityMagnitude(player.velocity, MAX_SPEED)
-    applyFriction(player.velocity, FRICTION * deltaTime)
+    if (gameOn) {
+        const axisX = keys.d.pressed ? 1 : keys.a.pressed ? -1 : 0
+        const axisY = keys.s.pressed ? 1 : keys.w.pressed ? -1 : 0
+        const dirMag = Math.hypot(axisX, axisY)
 
-    player.update(deltaTime)
+        if (dirMag > 0) {
+            player.velocity.x += (ACCELERATION * deltaTime) * axisX / dirMag
+            player.velocity.y += (ACCELERATION * deltaTime) * axisY / dirMag
+        }
 
-    if (player.position.x < 0) {
-        player.position.x = 0
-        player.velocity.x *= -1
-    }
-    if (player.position.x > canvas.width - player.width) {
-        player.position.x = canvas.width - player.width
-        player.velocity.x *= -1
-    }
-    if (player.position.y < 0) {
-        player.position.y = 0
-        player.velocity.y *= -1
-    }
-    if (player.position.y > canvas.height - player.height) {
-        player.position.y = canvas.height - player.height
-        player.velocity.y *= -1
-    }
+        clampVelocityMagnitude(player.velocity, MAX_SPEED)
+        applyFriction(player.velocity, FRICTION * deltaTime)
 
-    player.draw()
+        player.update(deltaTime)
 
-    const now = currentTime
-    if (now - lastSpawnTime > SPAWN_RATE) {
-        enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 50))
-        lastSpawnTime = now
-    }
+        if (player.position.x < 0) {
+            player.position.x = 0
+            player.velocity.x *= -1
+        }
+        if (player.position.x > canvas.width - player.width) {
+            player.position.x = canvas.width - player.width
+            player.velocity.x *= -1
+        }
+        if (player.position.y < 0) {
+            player.position.y = 0
+            player.velocity.y *= -1
+        }
+        if (player.position.y > canvas.height - player.height) {
+            player.position.y = canvas.height - player.height
+            player.velocity.y *= -1
+        }
+
+        player.draw()
+
+        const now = currentTime
+        if (now - lastSpawnTime > SPAWN_RATE) {
+            enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 500))
+            lastSpawnTime = now
+        }
 
 
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i]
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i]
+            for (let j = projectiles.length - 1; j >= 0; j--) {
+                const projectile = projectiles[j]
+                if (isColliding(enemy, projectile)) {
+                    enemy.health -= projectile.damage
+                    projectiles.splice(j, 1)
+                    break
+                }
+            }
+
+            if (enemy.health > 0) {
+                enemy.update(deltaTime)
+                if (isRectColliding(enemy, player)) {
+                    player.health -= enemy.health
+                    enemies.splice(i, 1)
+                    continue
+                }
+                enemy.draw()
+            } else {
+                enemies.splice(i, 1)
+            }
+        }
+
         for (let j = projectiles.length - 1; j >= 0; j--) {
             const projectile = projectiles[j]
-            if (isColliding(enemy, projectile)) {
-                enemy.health -= projectile.damage
+            projectile.update(deltaTime)
+            projectile.draw()
+
+            if (
+                projectile.position.x < 0 ||
+                projectile.position.x > canvas.width ||
+                projectile.position.y < 0 ||
+                projectile.position.y > canvas.height
+            ) {
                 projectiles.splice(j, 1)
-                break
             }
-        }
-
-        if (enemy.health > 0) {
-            enemy.update(deltaTime)
-            if (isRectColliding(enemy, player)) {
-                player.health -= enemy.health
-                enemies.splice(i, 1)
-                continue
-            }
-            enemy.draw()
-        } else {
-            enemies.splice(i, 1)
-        }
-    }
-
-    for (let j = projectiles.length - 1; j >= 0; j--) {
-        const projectile = projectiles[j]
-        projectile.update(deltaTime)
-        projectile.draw()
-
-        if (
-            projectile.position.x < 0 ||
-            projectile.position.x > canvas.width ||
-            projectile.position.y < 0 ||
-            projectile.position.y > canvas.height
-        ) {
-            projectiles.splice(j, 1)
         }
     }
 }
@@ -293,7 +311,6 @@ window.addEventListener('keyup', (event) => {
 })
 
 addEventListener('click', (event) => {
-    console.log(`click`)
     const playerCenterX = player.position.x + player.width / 2
     const playerCenterY = player.position.y + player.height / 2
 
@@ -316,7 +333,7 @@ addEventListener('click', (event) => {
     projectiles.push(new Projectile(
         { x: playerCenterX, y: playerCenterY },
         velocity,
-        10,
+        player.damage,
         5
     ))
 })
