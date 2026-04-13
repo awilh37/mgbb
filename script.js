@@ -227,7 +227,7 @@ function animate(currentTime) {
 
         const now = currentTime
         if (now - lastSpawnTime > SPAWN_RATE) {
-            enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 500))
+            enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 30))
             lastSpawnTime = now
         }
 
