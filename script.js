@@ -169,6 +169,14 @@ function isRectColliding(rect1, rect2) {
     )
 }
 
+function getSpawnPosition(radius, position) {
+    possibleX = Math.random() * canvas.width
+    possibleY = Math.random() * canvas.height
+    if (Math.abs(possibleX - position.x) <= radius || Math.abs(possibleY - position.y)) {
+        getSpawnPosition(radius, position)
+    } else return {x: possibleX, y: possibleY}
+}
+
 
 let lastTime = 0
 let lastSpawnTime = 0
@@ -227,7 +235,9 @@ function animate(currentTime) {
 
         const now = currentTime
         if (now - lastSpawnTime > SPAWN_RATE) {
-            enemies.push(new Enemy({ x: Math.random() * canvas.width, y: Math.random() * canvas.height }, { x: 0, y: 0 }, 30))
+            enemyPosition = getSpawnPosition(200, player.position)
+            alert("Enemy Position: " + enemyPosition + "/nPlayer Position: " + player.position)
+            enemies.push(new Enemy({ x: enemyPosition.x, y: enemyPosition.y }, { x: 0, y: 0 }, 30))
             lastSpawnTime = now
         }
 
