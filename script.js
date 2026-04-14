@@ -52,6 +52,9 @@ class Player {
         c.fillRect(this.position.x, this.position.y, this.width, this.height)
         c.fillStyle = "red"
         c.fillRect(this.position.x, this.position.y - 10, this.width * (this.health / 100), 5)
+        c.beginPath()
+        c.arc(this.position.x, this.position.y, 700, 0, Math.PI * 2)
+        c.stroke()
     }
 
     update(dt) {
@@ -126,7 +129,7 @@ class Projectile {
     }
 }
 
-const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0, y: 0 })
+const player = new Player({ x: canvas.width / 2, y: canvas.height / 2 }, { x: 0, y: 0 }, 1000000)
 
 const projectiles = []
 const enemies = []
@@ -170,11 +173,14 @@ function isRectColliding(rect1, rect2) {
 }
 
 function getSpawnPosition(radius, position) {
-    possibleX = Math.random() * canvas.width
-    possibleY = Math.random() * canvas.height
-    if (Math.abs(possibleX - position.x) <= radius || Math.abs(possibleY - position.y)) {
-        getSpawnPosition(radius, position)
-    } else return {x: possibleX, y: possibleY}
+    const possibleX = Math.random() * (canvas.width - 50)// the 50 is the width of the enemy so that it doesn't
+    const possibleY = Math.random() * (canvas.height - 50)// spawn off the edge of the screen, change to dynamic
+    const distance = Math.hypot(possibleX - position.x, possibleY - position.y)//not harcode value
+
+    if (distance <= radius) {
+        return getSpawnPosition(radius, position)
+    }
+    return { x: possibleX, y: possibleY }
 }
 
 
@@ -194,8 +200,8 @@ function animate(currentTime) {
         c.font = "48px serif"
         c.textAlign = "center"
         c.fillText("Game Over", canvas.width / 2, canvas.height / 2)
-        enemies = []
-        projectiles = []
+        enemies.length = 0
+        projectiles.length = 0
         gameOn = false
     }
 
@@ -235,9 +241,8 @@ function animate(currentTime) {
 
         const now = currentTime
         if (now - lastSpawnTime > SPAWN_RATE) {
-            enemyPosition = getSpawnPosition(200, player.position)
-            alert("Enemy Position: " + enemyPosition + "/nPlayer Position: " + player.position)
-            enemies.push(new Enemy({ x: enemyPosition.x, y: enemyPosition.y }, { x: 0, y: 0 }, 30))
+            const enemyPosition = getSpawnPosition(500, player.position)
+            enemies.push(new Enemy({ x: enemyPosition.x, y: enemyPosition.y }, { x: 0, y: 0 }, 1))
             lastSpawnTime = now
         }
 
